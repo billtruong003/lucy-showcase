@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lucy — a personal AI agent that remembers</title>
+<style>
+  :root{
+    --paper:#f4f2ec;
+    --paper-2:#eceae2;
+    --ink:#1b1a17;
+    --ink-soft:#56534b;
+    --ink-faint:#8a877c;
+    --rule:#d9d6cc;
+    --accent:#c2410c;          /* single accent — burnt orange, sat-controlled */
+    --accent-deep:#9a3209;
+    --mono:ui-monospace,"SF Mono",Menlo,"Cascadia Mono","Roboto Mono",monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:17px;
+    line-height:1.6;
+    padding:0 24px 120px;
+  }
+  .col{max-width:720px;margin:0 auto}
+
+  /* ---- reveal (motion low) ---- */
+  @media (prefers-reduced-motion:no-preference){
+    .r{opacity:0;transform:translateY(14px);animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards}
+    .r:nth-child(2){animation-delay:.05s}
+    @keyframes rise{to{opacity:1;transform:none}}
+  }
+
+  /* ---- masthead ---- */
+  header{padding:92px 0 30px;border-bottom:1px solid var(--rule)}
+  .kicker{font-family:var(--mono);font-size:12.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:30px}
+  h1{font-size:clamp(34px,6.4vw,58px);line-height:1.02;font-weight:680;letter-spacing:-0.02em;
+    max-width:13ch}
+  h1 em{font-style:italic;font-weight:680}
+  .stand{margin-top:26px;font-size:19px;line-height:1.5;color:var(--ink-soft);max-width:48ch}
+  .byline{margin-top:30px;font-family:var(--mono);font-size:12.5px;color:var(--ink-faint);
+    display:flex;gap:18px;flex-wrap:wrap}
+  .byline span{white-space:nowrap}
+
+  /* ---- sections ---- */
+  section{padding:54px 0;border-bottom:1px solid var(--rule)}
+  .sec-no{font-family:var(--mono);font-size:12.5px;color:var(--accent);letter-spacing:.1em;
+    margin-bottom:14px}
+  h2{font-size:clamp(23px,3.6vw,30px);line-height:1.12;font-weight:640;letter-spacing:-0.01em;
+    margin-bottom:18px;max-width:24ch}
+  p{color:var(--ink-soft);max-width:62ch}
+  p + p{margin-top:14px}
+  p strong, li strong{color:var(--ink);font-weight:620}
+  .accent{color:var(--accent)}
+
+  /* purpose list */
+  .points{list-style:none;margin-top:22px;display:grid;gap:0}
+  .points li{padding:16px 0;border-top:1px solid var(--rule);display:grid;
+    grid-template-columns:26px 1fr;gap:14px;color:var(--ink-soft);max-width:62ch}
+  .points li:last-child{border-bottom:1px solid var(--rule)}
+  .points .ix{font-family:var(--mono);font-size:13px;color:var(--ink-faint)}
+  .points b{color:var(--ink);font-weight:620}
+
+  /* pull-quote */
+  blockquote{margin:30px 0 4px;padding-left:22px;border-left:2px solid var(--accent);
+    font-size:21px;line-height:1.45;color:var(--ink);font-weight:480;max-width:50ch}
+
+  /* memory ledger */
+  .ledger{margin-top:26px;border-top:1px solid var(--rule)}
+  .row{display:grid;grid-template-columns:64px 1fr;gap:18px;padding:18px 0;
+    border-bottom:1px solid var(--rule);align-items:baseline}
+  .tag{font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:600}
+  .row h3{font-size:16.5px;font-weight:640;color:var(--ink);margin-bottom:4px}
+  .row p{font-size:15px;line-height:1.5;margin:0}
+  .src{margin-top:18px;font-family:var(--mono);font-size:12.5px;color:var(--ink-faint)}
+
+  /* diagram */
+  figure{margin-top:24px}
+  pre{background:#211f1b;color:#e7e3d8;border-radius:10px;padding:22px 20px;overflow-x:auto;
+    font-family:var(--mono);font-size:12.5px;line-height:1.7}
+  pre .a{color:#f0a36b}
+  pre .d{color:#8f8a7c}
+  figcaption{margin-top:12px;font-family:var(--mono);font-size:12px;color:var(--ink-faint)}
+
+  /* capability inline list */
+  .cap{margin-top:22px;display:grid;gap:0}
+  .cap li{list-style:none;padding:15px 0;border-top:1px solid var(--rule);max-width:62ch}
+  .cap li:last-child{border-bottom:1px solid var(--rule)}
+  .cap b{color:var(--ink);font-weight:620;display:block;margin-bottom:2px}
+  .cap span{color:var(--ink-soft);font-size:15px}
+
+  /* draft post */
+  .draft{margin-top:24px;background:var(--paper-2);border:1px solid var(--rule);
+    border-radius:12px;padding:28px}
+  .draft .lbl{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--ink-faint);margin-bottom:18px}
+  .draft p{color:var(--ink);max-width:none}
+  .draft .em{font-weight:640}
+  .draft . tags{}
+  .draft .tags{margin-top:16px;font-family:var(--mono);font-size:13px;color:var(--accent)}
+
+  footer{padding-top:40px;font-family:var(--mono);font-size:12px;color:var(--ink-faint);
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+</style>
+</head>
+<body>
+<div class="col">
+
+  <header class="r">
+    <div class="kicker">Field notes · Agent engineering</div>
+    <h1>I built an AI agent that <em>does not forget</em>.</h1>
+    <p class="stand">Lucy is a self-hosted personal agent — running 24/7, talking over Telegram, built on the Claude Agent SDK. Most of the work went into the hardest part: memory.</p>
+    <div class="byline">
+      <span>Bill Truong</span>
+      <span>Technical artist · game dev</span>
+      <span>2026</span>
+    </div>
+  </header>
+
+  <section class="r">
+    <div class="sec-no">01 / What it is</div>
+    <h2>Not a chatbot. A colleague that runs continuously.</h2>
+    <p>A language model forgets everything the moment a conversation ends. Lucy is the opposite: a long-running agent with persistent memory, the ability to take on work on its own, and a real set of tools to act with — not just to talk.</p>
+    <ul class="points">
+      <li><span class="ix">a.</span><span><b>It remembers.</b> A five-tier long-term memory system, described below.</span></li>
+      <li><span class="ix">b.</span><span><b>It works.</b> Drop a task spec into a queue and Lucy runs a sprint — plan, build, report — by itself.</span></li>
+      <li><span class="ix">c.</span><span><b>It acts.</b> Real tools (files, web, git, finance) through MCP, behind a safety rail.</span></li>
+      <li><span class="ix">d.</span><span><b>It has a cockpit.</b> A web hub for chat, token &amp; cost accounting, expert routing, and skills.</span></li>
+    </ul>
+  </section>
+
+  <section class="r">
+    <div class="sec-no">02 / The memory — and why it exists</div>
+    <h2>The point isn't to store text. It's to give the agent continuity.</h2>
+    <p>Without memory, every chat starts from zero — re-explaining who I am, what we're building, what was already decided. That burns tokens and the agent never grows up. The memory system exists to fix four things:</p>
+    <ul class="points">
+      <li><span class="ix">1.</span><span><b>Recall the right thing at the right moment</b> — instead of stuffing everything into context.</span></li>
+      <li><span class="ix">2.</span><span><b>Hold on to people, preferences, projects, decisions</b> — across every conversation.</span></li>
+      <li><span class="ix">3.</span><span><b>Forget what's stale, deliberately</b> — outdated facts stop being used, but the history is kept.</span></li>
+      <li><span class="ix">4.</span><span><b>Keep secrets out</b> — sensitive values are redacted before anything is stored or embedded.</span></li>
+    </ul>
+
+    <blockquote>A five-tier brain: short-term episodic, long-term hybrid recall, self-consolidation, and controlled forgetting — running on a 1.9&nbsp;GB VPS.</blockquote>
+
+    <div class="ledger">
+      <div class="row">
+        <div class="tag">P0</div>
+        <div><h3>Recall prefetch</h3><p>Each turn, relevant memory is looked up (full-text, FTS5) and threaded into the prompt automatically.</p></div>
+      </div>
+      <div class="row">
+        <div class="tag">P1</div>
+        <div><h3>Hybrid vector recall</h3><p>Keyword search fused with semantic search (sqlite-vec + a 768-dim embedding), combined via reciprocal-rank fusion. Index grows incrementally by checksum.</p></div>
+      </div>
+      <div class="row">
+        <div class="tag">P2</div>
+        <div><h3>Episodic memory</h3><p>Individual conversation turns are stored, so Lucy can recall what was actually said, not just curated facts.</p></div>
+      </div>
+      <div class="row">
+        <div class="tag">P3</div>
+        <div><h3>Consolidation</h3><p>Memories are merged the way Mem0 does it — add / update / delete / no-op, with reflection — gated behind a dry-run before anything is applied.</p></div>
+      </div>
+      <div class="row">
+        <div class="tag">P4</div>
+        <div><h3>Bi-temporal forgetting</h3><p>Zep-style validity windows: an expired fact drops out of recall but stays on file as history; a supersede step keeps the new and retires the old on conflict.</p></div>
+      </div>
+    </div>
+    <p class="src">Inspired by published memory research from Mem0, Zep and Letta — then redesigned to fit a small box.</p>
+  </section>
+
+  <section class="r">
+    <div class="sec-no">03 / The hand</div>
+    <h2>What turns a chatbot into something that can act — safely.</h2>
+    <p>At boot, a tool registry is loaded into a manifest baked into the system prompt — so the agent knows what it can do without scanning files every turn. Every action passes through a guard: dangerous commands are blocked, tool permissions are granted per-persona, and every outcome is logged back into memory.</p>
+    <figure>
+      <pre><span class="d">[boot]</span>     load tools/*  →  manifest of every tool (name + description)
+<span class="d">[session]</span>  manifest baked into the system prompt  <span class="d">(static, cache-friendly)</span>
+<span class="d">[turn]</span>     route → recall → assemble(persona + memory + manifest)
+           → reason
+                <span class="a">├─ pre-tool guard</span>   block rm -rf / git push / unsafe paths
+                <span class="a">├─ can-use-tool</span>    grant tool rights per persona
+                <span class="a">└─ post-tool hook</span>  log outcome → memory + telemetry
+           → reply  →  persist(tokens + episode)
+<span class="d">[add a tool]</span>  drop one file into tools/  →  manifest updates itself</pre>
+      <figcaption>Capability layer — the loop every message runs through.</figcaption>
+    </figure>
+    <ul class="cap">
+      <li><b>Tool registry + MCP</b><span>Files, web, git, memory, finance — discoverable, permissioned.</span></li>
+      <li><b>Skill engine</b><span>Skills load on demand by keyword, instead of bloating every prompt.</span></li>
+      <li><b>Safety hooks</b><span>Pre-tool guard, per-persona permission, post-tool audit trail.</span></li>
+    </ul>
+  </section>
+
+  <section class="r">
+    <div class="sec-no">04 / What's actually running</div>
+    <h2>Not a demo. A system that's been live for months.</h2>
+    <ul class="cap">
+      <li><b>Telegram bridge</b><span>Telegram talks to the Claude Agent SDK in-process, kept alive by a process manager.</span></li>
+      <li><b>Web hub</b><span>Streaming chat, a token &amp; cost ledger down to source / model / cache, expert and skill panels.</span></li>
+      <li><b>Auto-task &amp; auto-build</b><span>A queued spec runs a three-phase sprint — plan, build, report — with a low-cost model lane too.</span></li>
+      <li><b>Expert routing</b><span>Questions are routed to the right persona — finance, marketing, engineering — by tag and embedding.</span></li>
+      <li><b>Cost guard</b><span>A single source of truth for token spend; every code path accrues to one ledger.</span></li>
+      <li><b>Daily brief &amp; trend radar</b><span>Morning and evening cron jobs compile news and market signals into a report.</span></li>
+    </ul>
+  </section>
+
+  <section class="r" style="border-bottom:none">
+    <div class="sec-no">05 / The post</div>
+    <h2>A draft, ready to ship.</h2>
+    <div class="draft">
+      <div class="lbl">LinkedIn — draft</div>
+      <p class="em">I built “Lucy” — a personal AI agent that actually remembers.</p>
+      <p>As a technical artist and game dev, I got curious: how useful does an AI agent become if it never forgets? So I self-hosted one on the Claude Agent SDK — running 24/7, reachable over Telegram — and spent most of the effort on the hardest part: memory.</p>
+      <p>Lucy has a five-tier brain, inspired by research from Mem0, Zep and Letta:</p>
+      <p>— Hybrid recall: keyword + semantic search (sqlite-vec + 768-dim embeddings)<br>
+         — Episodic memory that stores individual conversation turns<br>
+         — Self-consolidation (add / update / delete), Mem0-style<br>
+         — Controlled, bi-temporal forgetting, Zep-style: stale facts stop being used but stay on file</p>
+      <p>All of it runs on a 1.9&nbsp;GB VPS.</p>
+      <p>Beyond memory, Lucy has a “hand”: a tool registry + MCP to work with files, web and git, a safety rail that blocks dangerous commands, and an engine that takes a task and runs it to a report on its own.</p>
+      <p>The biggest lesson: what turns a chatbot into a colleague isn’t the model — it’s the memory, the tools, and the safety rail around it.</p>
+      <p class="tags">#AI #LLM #AgentEngineering #IndieDev #GameDev</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>Lucy / internal showcase</span>
+    <span>localhost-only · updated 2026-06-21</span>
+  </footer>
+
+</div>
+</body>
+</html>
